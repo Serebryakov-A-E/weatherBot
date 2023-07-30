@@ -1,2 +1,0 @@
-#telegramm.bot.token=6602657130:AAHYT32Q4T0cnmsEQkXZ9U4FI_obkzJgMzI
-#weather.api.key=e573595e6fa24e099ea63312233007
