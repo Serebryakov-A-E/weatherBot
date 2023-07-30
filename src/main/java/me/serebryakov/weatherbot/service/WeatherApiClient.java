@@ -12,11 +12,10 @@ public class WeatherApiClient {
     private String weatherApiKey;
 
     private static final String BASE_URL = "http://api.weatherapi.com/v1/current.json";
-    private static final String CITY = "Orsk";
     private static final String AQI = "no";
 
-    public WeatherData getWeatherData() {
-        String apiUrl = BASE_URL + "?key=" + weatherApiKey + "&q=" + CITY + "&aqi=" + AQI;
+    public WeatherData getWeatherData(String city) {
+        String apiUrl = BASE_URL + "?key=" + weatherApiKey + "&q=" + city + "&aqi=" + AQI;
         RestTemplate restTemplate = new RestTemplate();
         String jsonResponse = restTemplate.getForObject(apiUrl, String.class);
 

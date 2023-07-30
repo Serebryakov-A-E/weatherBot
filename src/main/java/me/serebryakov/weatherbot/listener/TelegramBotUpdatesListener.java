@@ -4,7 +4,6 @@ import com.pengrad.telegrambot.TelegramBot;
 import com.pengrad.telegrambot.UpdatesListener;
 import com.pengrad.telegrambot.model.Message;
 import com.pengrad.telegrambot.model.Update;
-import com.pengrad.telegrambot.request.SendMessage;
 import com.pengrad.telegrambot.request.SendPhoto;
 import com.pengrad.telegrambot.response.SendResponse;
 import jakarta.annotation.PostConstruct;
@@ -43,9 +42,9 @@ public class TelegramBotUpdatesListener implements UpdatesListener {
                     logger.info("handles update: {}", update);
                     Message message = update.message();
 
-                    SendMessage sendMessage = telegramKeyboard.execute(message);
+                    SendPhoto sendPhoto = telegramKeyboard.execute(message);
 
-                    SendResponse sendResponse = telegramBot.execute(sendMessage);
+                    SendResponse sendResponse = telegramBot.execute(sendPhoto);
 
                     if (!sendResponse.isOk()) {
                         logger.error("Error sending message: {}", sendResponse.description());
