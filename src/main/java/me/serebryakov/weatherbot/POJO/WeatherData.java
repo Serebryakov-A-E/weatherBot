@@ -6,4 +6,5 @@ import lombok.Data;
 public class WeatherData {
     private Location location;
     private CurrentWeather current;
+    private Forecast forecast;
 }
