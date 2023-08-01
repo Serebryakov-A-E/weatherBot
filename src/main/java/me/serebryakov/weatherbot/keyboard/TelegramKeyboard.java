@@ -5,20 +5,25 @@ import com.pengrad.telegrambot.request.SendMessage;
 import com.pengrad.telegrambot.request.SendPhoto;
 import me.serebryakov.weatherbot.POJO.WeatherData;
 import me.serebryakov.weatherbot.service.WeatherApiClient;
+import me.serebryakov.weatherbot.service.impl.UserServiceImpl;
 import org.springframework.stereotype.Service;
 import org.springframework.web.client.RestTemplate;
+
+import java.time.LocalDateTime;
 
 @Service
 public class TelegramKeyboard {
     private final WeatherApiClient weatherApiClient;
+    private final UserServiceImpl userService;
 
-    public TelegramKeyboard(WeatherApiClient weatherApiClient) {
+    public TelegramKeyboard(WeatherApiClient weatherApiClient, UserServiceImpl userService) {
         this.weatherApiClient = weatherApiClient;
+        this.userService = userService;
     }
 
     public SendPhoto getCurrent(Message message) {
         long chatId = message.chat().id();
-        String city = message.text();
+        String city = userService.findByChatId(message.chat().id()).getCity();
         WeatherData weatherData = weatherApiClient.getCurrentWeatherData(city);
 
         if (weatherData == null) {
@@ -41,7 +46,7 @@ public class TelegramKeyboard {
 
     public SendMessage getForecast(Message message, int days) {
         long chatId = message.chat().id();
-        String city = message.text();
+        String city = userService.findByChatId(message.chat().id()).getCity();
         WeatherData weatherData = weatherApiClient.getForeCastsWeatherData(city, days);
 
         if (weatherData == null) {
@@ -54,10 +59,28 @@ public class TelegramKeyboard {
 
         StringBuilder sb = new StringBuilder();
 
+        sb.append("Сегодня в городе: ").append(city).append("\n");
         sb.append("Минимальная температура: ").append(minTemp).append("\n");
         sb.append("Средняя температура: ").append(avgTemp).append("\n");
-        sb.append("Максимальная температура: ").append(maxTemp).append("\n");
+        sb.append("Максимальная температура: ").append(maxTemp).append("\n").append("\n");
+
+        int hours = 24 - LocalDateTime.now().getHour();
+
+        for (int i = 0; i < hours; i++) {
+            sb.append("Время: ").append(weatherData.getForecast().getForecastday().get(0).getHour().get(i).getTime()).append("\n");
+            sb.append("Температура: ").append(weatherData.getForecast().getForecastday().get(0).getHour().get(0).getTemp_c()).append("°C").append("\n");
+            sb.append("Вероятность дождя: ").append(weatherData.getForecast().getForecastday().get(0).getHour().get(0).getChance_of_rain()).append("%").append("\n");
+            sb.append("Погода: ").append(weatherData.getForecast().getForecastday().get(0).getHour().get(0).getCondition().getText()).append("\n");
+            sb.append("\n");
+        }
+
+
         return new SendMessage(message.chat().id(), sb.toString());
+    }
+
+    public boolean isCityExists(String city) {
+        WeatherData weatherData = weatherApiClient.getCurrentWeatherData(city);
+        return weatherData != null;
     }
     private byte[] getImageBytesByUrl(String imageUrl) {
         RestTemplate restTemplate = new RestTemplate();

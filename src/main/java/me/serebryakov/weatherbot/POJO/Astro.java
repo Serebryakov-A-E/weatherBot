@@ -12,5 +12,4 @@ public class Astro {
     private String moon_illumination;
     private int is_moon_up;
     private int is_sun_up;
-
 }

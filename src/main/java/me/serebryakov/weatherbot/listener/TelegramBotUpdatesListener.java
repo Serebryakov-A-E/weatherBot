@@ -9,6 +9,8 @@ import com.pengrad.telegrambot.request.SendMessage;
 import com.pengrad.telegrambot.request.SendPhoto;
 import com.pengrad.telegrambot.response.SendResponse;
 import jakarta.annotation.PostConstruct;
+import me.serebryakov.weatherbot.entity.User;
+import me.serebryakov.weatherbot.service.impl.UserServiceImpl;
 import me.serebryakov.weatherbot.keyboard.TelegramKeyboard;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -20,19 +22,20 @@ import java.util.concurrent.Executors;
 
 @Component
 public class TelegramBotUpdatesListener implements UpdatesListener {
-    private final String HELLO_MESSAGE = "Добро пожаловать! Я бот, который поможет вам узнать текущую" +
-            " погоду в различных городах. Просто отправьте название города, и я пришлю вам актуальную " +
-            "информацию о погоде. Попробуйте отправить название города, например, \"Москва\" или \"Лондон\". " +
-            "Удачного использования!";
-    private final String[] DAY_FORECAST = new String[]{"Сегодня", "Завтра", "Послезавтра"
-    };
+    private final String HELLO_MESSAGE = "Привет! Я - бот, который поможет вам узнать текущую погоду " +
+            "и прогноз на день по выбранному городу. Просто отправьте название города," +
+            " и я пришлю вам актуальную информацию о погоде. Удачного использования!";
+
+    private final String[] MENU = {"Изменить город", "Погода сейчас", "Прогноз на день"};
     private final Logger logger = LoggerFactory.getLogger(TelegramBotUpdatesListener.class);
     private final TelegramBot telegramBot;
     private final ExecutorService executorService;
     private final TelegramKeyboard telegramKeyboard;
+    private final UserServiceImpl userService;
 
-    public TelegramBotUpdatesListener(TelegramBot telegramBot, TelegramKeyboard telegramKeyboard) {
+    public TelegramBotUpdatesListener(TelegramBot telegramBot, TelegramKeyboard telegramKeyboard, UserServiceImpl userService) {
         this.telegramBot = telegramBot;
+        this.userService = userService;
         this.executorService = Executors.newFixedThreadPool(10);
         this.telegramKeyboard = telegramKeyboard;
     }
@@ -49,31 +52,57 @@ public class TelegramBotUpdatesListener implements UpdatesListener {
                 list.forEach(update -> {
                     logger.info("handles update: {}", update);
                     Message message = update.message();
+                    String text = message.text();
+                    long chatId = message.chat().id();
                     SendPhoto sendPhoto;
                     SendMessage sendMessage;
                     SendResponse sendResponse;
 
-                    if (("/start").equalsIgnoreCase(message.text()) || ("старт").equalsIgnoreCase(message.text())) {
-                        sendMessage = new SendMessage(message.chat().id(), HELLO_MESSAGE);
+                    if (userService.findByChatId(chatId) == null) {
+                        userService.create(new User(chatId, "", false));
+                    }
+
+                    if (("/start").equalsIgnoreCase(text) || ("старт").equalsIgnoreCase(text)) {
+                        ReplyKeyboardMarkup replyKeyboardMarkup = new ReplyKeyboardMarkup("Выбрать город");
+                        sendMessage = new SendMessage(chatId, HELLO_MESSAGE).replyMarkup(replyKeyboardMarkup);
                         sendResponse = telegramBot.execute(sendMessage);
-                    } else if ("Прогноз".equalsIgnoreCase(message.text())) {
-                        ReplyKeyboardMarkup replyKeyboardMarkup = new ReplyKeyboardMarkup(DAY_FORECAST);
-                        sendMessage = new SendMessage(message.chat().id(), "Выберите на какой день вы хотите получить прогноз:")
-                                .replyMarkup(replyKeyboardMarkup);
+                    } else if (("Выбрать город").equalsIgnoreCase(text) || ("Изменить город").equalsIgnoreCase(text)) {
+                        sendMessage = new SendMessage(chatId, "Введите название города:");
+                        userService.update(new User(chatId, "", true));
                         sendResponse = telegramBot.execute(sendMessage);
-                    } else if ("Орск".equalsIgnoreCase(message.text())) {
-                        // TODO: сделать возможность выбора прогноза по дате, для этого нужно сохранять город и давать на выбор дату
-                        sendMessage = telegramKeyboard.getForecast(message, 1);
-                        sendResponse = telegramBot.execute(sendMessage);
-                    } else if ("Затвтра".equalsIgnoreCase(message.text())) {
-                        sendMessage = telegramKeyboard.getForecast(message, 2);
-                        sendResponse = telegramBot.execute(sendMessage);
-                    } else if ("Послезавтра".equalsIgnoreCase(message.text())) {
-                        sendMessage = telegramKeyboard.getForecast(message, 3);
-                        sendResponse = telegramBot.execute(sendMessage);
+                    } else if (("Погода сейчас").equalsIgnoreCase(text)) {
+                        if (!userService.findByChatId(chatId).getCity().equals("")) {
+                            sendPhoto = telegramKeyboard.getCurrent(message);
+                            sendResponse = telegramBot.execute(sendPhoto);
+                        } else {
+                            ReplyKeyboardMarkup replyKeyboardMarkup = new ReplyKeyboardMarkup(MENU);
+                            sendMessage = new SendMessage(chatId, "Сначала выберите город!").replyMarkup(replyKeyboardMarkup);
+                            sendResponse = telegramBot.execute(sendMessage);
+                        }
+                    } else if ("Прогноз на день".equalsIgnoreCase(text)) {
+                        if (!userService.findByChatId(chatId).getCity().equals("")) {
+                            ReplyKeyboardMarkup replyKeyboardMarkup = new ReplyKeyboardMarkup(MENU);
+                            sendMessage = telegramKeyboard.getForecast(message, 1).replyMarkup(replyKeyboardMarkup);
+                            sendResponse = telegramBot.execute(sendMessage);
+                        } else {
+                            ReplyKeyboardMarkup replyKeyboardMarkup = new ReplyKeyboardMarkup(MENU);
+                            sendMessage = new SendMessage(chatId, "Сначала выберите город!").replyMarkup(replyKeyboardMarkup);
+                            sendResponse = telegramBot.execute(sendMessage);
+                        }
                     } else {
-                        sendPhoto = telegramKeyboard.getCurrent(message);
-                        sendResponse = telegramBot.execute(sendPhoto);
+                        if (userService.findByChatId(chatId).isCityStatus()) {
+                            if (telegramKeyboard.isCityExists(text)) {
+                                userService.update(new User(chatId, text, false));
+                                ReplyKeyboardMarkup replyKeyboardMarkup = new ReplyKeyboardMarkup(MENU);
+                                sendMessage = new SendMessage(chatId, "Выбран город: " + text).replyMarkup(replyKeyboardMarkup);
+                            } else {
+                                sendMessage = new SendMessage(chatId, "К сожалению, такого города нет. Выберите другой:");
+                            }
+                        } else {
+                            ReplyKeyboardMarkup replyKeyboardMarkup = new ReplyKeyboardMarkup(MENU);
+                            sendMessage = new SendMessage(chatId, "Неверная команда! Попробуйте ещё раз!").replyMarkup(replyKeyboardMarkup);
+                        }
+                        sendResponse = telegramBot.execute(sendMessage);
                     }
 
                     if (!sendResponse.isOk()) {
