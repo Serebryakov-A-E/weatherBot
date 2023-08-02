@@ -75,7 +75,6 @@ public class WeatherBotService {
         }
 
         StringBuilder sb = new StringBuilder();
-        DateTimeFormatter formatter = DateTimeFormatter.ofPattern("HH:mm");
 
         sb.append("Прогноз погоды для города ").append(city).append(":\n");
         sb.append("Сегодня:\n");
@@ -85,12 +84,15 @@ public class WeatherBotService {
 
         List<Hour> hourlyForecast = weatherData.getForecast().getForecastday().get(0).getHour();
 
-        LocalDateTime now = LocalDateTime.now();
-        for (int i = 0; i < hourlyForecast.size(); i++) {
-            Hour hour = hourlyForecast.get(i);
-            LocalDateTime forecastTime = now.plusHours(i);
+        int now = LocalDateTime.now().getHour();
 
-            sb.append("Время: ").append(forecastTime.format(formatter)).append("\n");
+        for (int i = now; i < hourlyForecast.size(); i++) {
+            Hour hour = hourlyForecast.get(i);
+            String forecastTime = weatherData.getForecast().getForecastday().get(0).getHour().get(i).getTime();
+            LocalDateTime dateTime = LocalDateTime.parse(forecastTime, DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm"));
+            String formattedTime = dateTime.format(DateTimeFormatter.ofPattern("HH:mm"));
+
+            sb.append("Время: ").append(formattedTime).append("\n");
             sb.append("Температура: ").append(hour.getTemp_c()).append("°C\n");
             sb.append("Вероятность дождя: ").append(hour.getChance_of_rain()).append("%\n");
             sb.append("Погода: ").append(hour.getCondition().getText()).append("\n\n");
