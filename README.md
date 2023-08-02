@@ -1,4 +1,5 @@
 # WeatherBot
+![image](https://github.com/Serebryakov-A-E/weatherBot/blob/develop/src/main/resources/gif/example.gif)
 
 Проект WeatherBot, предоставляет информацию о текущей погоде и прогнозе для заданного города. Бот использует WeatherAPI для получения данных о погоде и Telegram API для взаимодействия с пользователями.
 
